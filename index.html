@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>발표자 순서 뽑기</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: #111111;
+    color: #ffffff;
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .screen {
+    display: none;
+    width: 100%;
+    max-width: 600px;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .screen.active {
+    display: block;
+  }
+
+  .screen h1 {
+    margin-bottom: 24px;
+  }
+
+  .next-btn {
+    margin-top: 32px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #111111;
+    background-color: #d4af37;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .next-btn:hover {
+    opacity: 0.85;
+  }
+
+  .name-textarea {
+    width: 100%;
+    height: 220px;
+    padding: 12px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #ffffff;
+    background-color: #1e1e1e;
+    border: 1px solid #444444;
+    border-radius: 8px;
+    resize: vertical;
+  }
+
+  .name-textarea::placeholder {
+    color: #888888;
+  }
+
+  .participant-count {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #cccccc;
+  }
+
+  .participant-count span {
+    color: #d4af37;
+    font-weight: bold;
+  }
+
+  .primary-btn {
+    margin-top: 32px;
+    padding: 14px 32px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #111111;
+    background-color: #c0392b;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .primary-btn:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  .primary-btn:disabled {
+    background-color: #555555;
+    color: #999999;
+    cursor: not-allowed;
+  }
+
+  .slot-display {
+    margin: 48px 0 24px;
+    min-height: 64px;
+    font-size: 42px;
+    font-weight: 900;
+    color: #d4af37;
+    word-break: keep-all;
+  }
+
+  .pulse-text {
+    font-size: 18px;
+    color: #cccccc;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  .reveal-progress {
+    font-size: 16px;
+    color: #cccccc;
+    margin-bottom: 12px;
+  }
+
+  .reveal-progress span {
+    color: #d4af37;
+    font-weight: bold;
+  }
+
+  .style-toggle-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .style-toggle-btn {
+    flex: 1;
+    padding: 10px 6px;
+    font-size: 13px;
+    color: #cccccc;
+    background-color: #1e1e1e;
+    border: 1px solid #444444;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .style-toggle-btn.active {
+    color: #111111;
+    background-color: #d4af37;
+    border-color: #d4af37;
+    font-weight: bold;
+  }
+
+  .wheel-wrapper,
+  .text-roulette-wrapper,
+  .vertical-slot-wrapper {
+    display: none;
+  }
+
+  .wheel-wrapper {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    margin: 30px auto 10px;
+  }
+
+  .wheel-pointer {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 22px solid #ffffff;
+    z-index: 2;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+  }
+
+  #wheel-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 50%;
+    box-shadow: 0 0 0 6px #333333, 0 0 20px rgba(0, 0, 0, 0.6);
+  }
+
+  .vertical-slot-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    height: 80px;
+    margin: 40px auto 10px;
+    overflow: hidden;
+    border: 3px solid #d4af37;
+    border-radius: 10px;
+    background-color: #1e1e1e;
+  }
+
+  .vertical-slot-strip {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .vertical-slot-item {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 900;
+    color: #d4af37;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .screen.active {
+    animation: fadeIn 0.5s ease;
+  }
+
+  .result-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 24px 0;
+    max-height: 55vh;
+    overflow-y: auto;
+  }
+
+  .result-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background-color: #1e1e1e;
+    border: 1px solid #444444;
+    border-radius: 8px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: left;
+    opacity: 0;
+    transform: translateY(-12px);
+    animation: itemAppear 0.3s ease forwards;
+  }
+
+  .result-item .order-number {
+    color: #d4af37;
+    min-width: 44px;
+  }
+
+  @keyframes itemAppear {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+</head>
+<body>
+
+  <!-- 화면 1: 명단 입력 -->
+  <section id="screen-input" class="screen active">
+    <h1>발표자 순서 뽑기</h1>
+
+    <textarea
+      id="name-input"
+      class="name-textarea"
+      placeholder="이름을 한 줄에 한 명씩 입력하세요&#10;예)&#10;홍길동&#10;김철수"
+      oninput="updateParticipantCount()"
+    ></textarea>
+
+    <p class="participant-count">현재 인원: <span id="participant-count">0</span>명</p>
+
+    <div class="style-toggle-group">
+      <button type="button" id="style-wheel" class="style-toggle-btn active" onclick="setRevealStyle('wheel')">
+        A. 회전판 룰렛
+      </button>
+      <button type="button" id="style-text" class="style-toggle-btn" onclick="setRevealStyle('text')">
+        B. 텍스트 룰렛
+      </button>
+      <button type="button" id="style-vertical" class="style-toggle-btn" onclick="setRevealStyle('vertical')">
+        C. 세로 슬롯머신
+      </button>
+    </div>
+
+    <button id="start-btn" class="primary-btn" disabled onclick="handleStartClick()">
+      순서 뽑기 시작
+    </button>
+  </section>
+
+  <!-- 화면 2: 룰렛 공개 (순위별로 룰렛 스핀 후 확정 공개를 반복) -->
+  <section id="screen-reveal" class="screen">
+    <p id="reveal-progress" class="reveal-progress">발표 순서를 뽑는 중...</p>
+
+    <!-- A. 회전판 룰렛: JS가 매 순위마다 SVG를 새로 그려 넣는다 -->
+    <div id="wheel-wrapper" class="wheel-wrapper">
+      <div class="wheel-pointer"></div>
+    </div>
+
+    <!-- B. 텍스트 룰렛 -->
+    <div id="text-roulette-wrapper" class="text-roulette-wrapper">
+      <div id="slot-display" class="slot-display">-</div>
+      <p class="pulse-text">두근두근...</p>
+    </div>
+
+    <!-- C. 세로 슬롯머신 -->
+    <div id="vertical-slot-wrapper" class="vertical-slot-wrapper">
+      <div id="vertical-slot-strip" class="vertical-slot-strip"></div>
+    </div>
+
+    <div id="result-list" class="result-list"></div>
+    <button id="reset-btn" class="primary-btn" style="display: none" onclick="handleResetClick()">
+      다시 뽑기
+    </button>
+  </section>
+
+  <!-- 컨페티 라이브러리 CDN 연결 -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <script>
+    /**
+     * 화면 전환 함수
+     * screenId에 해당하는 .screen 요소만 active 클래스를 부여해 표시하고,
+     * 나머지는 숨긴다.
+     */
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach((screen) => {
+        screen.classList.toggle('active', screen.id === screenId);
+      });
+    }
+
+    // 셔플된 전체 발표 순서. 룰렛 공개 로직에서 순위별로 하나씩 사용한다.
+    let finalOrder = [];
+
+    // 공개 연출 방식: 'wheel'(회전판 룰렛) | 'text'(텍스트 룰렛) | 'vertical'(세로 슬롯머신)
+    let revealStyle = 'wheel';
+
+    /** 입력 화면의 A/B/C 토글 버튼 클릭 시 선택된 연출 방식을 갱신한다. */
+    function setRevealStyle(style) {
+      revealStyle = style;
+      document.getElementById('style-wheel').classList.toggle('active', style === 'wheel');
+      document.getElementById('style-text').classList.toggle('active', style === 'text');
+      document.getElementById('style-vertical').classList.toggle('active', style === 'vertical');
+    }
+
+    /** 선택된 연출 방식에 해당하는 컨테이너만 보이도록 전환한다. */
+    function updateRevealContainerVisibility() {
+      document.getElementById('wheel-wrapper').style.display = revealStyle === 'wheel' ? 'block' : 'none';
+      document.getElementById('text-roulette-wrapper').style.display = revealStyle === 'text' ? 'block' : 'none';
+      document.getElementById('vertical-slot-wrapper').style.display = revealStyle === 'vertical' ? 'block' : 'none';
+    }
+
+    /**
+     * 이름 입력값을 줄바꿈 기준으로 분리하고, 빈 줄과 앞뒤 공백을 제거해
+     * 실제 참가자 이름 배열만 반환한다.
+     */
+    function getNameList() {
+      return document
+        .getElementById('name-input')
+        .value.split('\n')
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
+    }
+
+    /**
+     * 참가자 수를 다시 세어 화면에 표시하고,
+     * 2명 미만이면 시작 버튼을 비활성화한다.
+     */
+    function updateParticipantCount() {
+      const names = getNameList();
+      document.getElementById('participant-count').textContent = names.length;
+      document.getElementById('start-btn').disabled = names.length < 2;
+    }
+
+    /**
+     * Fisher-Yates 셔플 알고리즘.
+     * 원본 배열은 건드리지 않고, 복사본을 뒤에서부터 무작위로 섞어 반환한다.
+     */
+    function shuffleArray(array) {
+      const result = [...array];
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    }
+
+    // Web Audio API용 오디오 컨텍스트. 브라우저 자동재생 정책 때문에
+    // 반드시 사용자 클릭(제스처) 시점에 한 번 생성/재개해두어야 이후에도 소리가 난다.
+    let audioContext = null;
+
+    function getAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioContext;
+    }
+
+    /** 오실레이터로 짧은 "삐" 효과음을 생성해 재생한다. */
+    function playBeep() {
+      const ctx = getAudioContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 880;
+      gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.15);
+    }
+
+    /** canvas-confetti 라이브러리로 컨페티 효과를 터뜨린다. */
+    function launchConfetti() {
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+      }
+    }
+
+    const PAUSE_AFTER_LAND_MS = 300; // 확정 공개 후 다음 순위 룰렛 시작까지 대기 시간
+
+    /** HTML 삽입 시 사용자가 입력한 이름에 태그가 섞여도 안전하도록 이스케이프한다. */
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    /**
+     * 결과 목록에 확정된 순위 항목 하나를 추가한다.
+     */
+    function appendResultItem(index, name) {
+      const resultList = document.getElementById('result-list');
+      const item = document.createElement('div');
+      item.className = 'result-item';
+      item.innerHTML = `<span class="order-number">${index + 1}번</span><span>${escapeHtml(name)}</span>`;
+      resultList.appendChild(item);
+    }
+
+    // ── B. 텍스트 룰렛 ──────────────────────────────────────────
+    const TEXT_SPIN_DURATION_MS = 600;
+    const TEXT_SPIN_TICK_MS = 60;
+
+    /** remainingPool 중 하나를 무작위로 빠르게 바꿔 보여주다가 targetName에서 멈춘다. */
+    function runTextRound(remainingPool, targetName, onLanded) {
+      const slotDisplay = document.getElementById('slot-display');
+
+      const intervalId = setInterval(() => {
+        const randomName = remainingPool[Math.floor(Math.random() * remainingPool.length)];
+        slotDisplay.textContent = randomName;
+      }, TEXT_SPIN_TICK_MS);
+
+      setTimeout(() => {
+        clearInterval(intervalId);
+        slotDisplay.textContent = targetName;
+        playBeep();
+        onLanded();
+      }, TEXT_SPIN_DURATION_MS);
+    }
+
+    // ── A. 회전판 룰렛 ──────────────────────────────────────────
+    const WHEEL_SPIN_DURATION_MS = 1000;
+    const WHEEL_FULL_SPINS = 3;
+
+    /** 12시 방향(0deg)을 기준으로 시계방향 각도(angleDeg)에 대응하는 좌표를 계산한다. */
+    function polarPoint(cx, cy, r, angleDeg) {
+      const rad = (angleDeg * Math.PI) / 180;
+      return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
+    }
+
+    /** names 배열을 부채꼴로 나눈 룰렛 휠 SVG 마크업을 생성한다. targetName은 항상 0번 인덱스(names[0])다. */
+    function buildWheelSvgMarkup(names) {
+      const size = 260;
+      const cx = size / 2;
+      const cy = size / 2;
+      const radius = size / 2 - 4;
+      const n = names.length;
+      const anglePerSector = 360 / n;
+      const colors = ['#c0392b', '#d4af37'];
+      const fontSize = n > 14 ? 9 : n > 8 ? 11 : 14;
+
+      let content = '';
+      names.forEach((name, i) => {
+        const startAngle = i * anglePerSector;
+        const endAngle = (i + 1) * anglePerSector;
+        const start = polarPoint(cx, cy, radius, startAngle);
+        const end = polarPoint(cx, cy, radius, endAngle);
+        const largeArc = anglePerSector > 180 ? 1 : 0;
+        const pathData = `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
+
+        const midAngle = startAngle + anglePerSector / 2;
+        const labelPos = polarPoint(cx, cy, radius * 0.62, midAngle);
+
+        content += `<path d="${pathData}" fill="${colors[i % 2]}" stroke="#111111" stroke-width="1"></path>`;
+        content += `<text x="${labelPos.x.toFixed(1)}" y="${labelPos.y.toFixed(1)}" fill="#ffffff" font-size="${fontSize}" font-weight="700" text-anchor="middle" dominant-baseline="middle" transform="rotate(${midAngle.toFixed(1)}, ${labelPos.x.toFixed(1)}, ${labelPos.y.toFixed(1)})">${escapeHtml(name)}</text>`;
+      });
+
+      return `<svg id="wheel-svg" viewBox="0 0 ${size} ${size}">${content}</svg>`;
+    }
+
+    /** remainingPool로 룰렛 휠을 새로 그리고, 0번 항목(targetName)이 상단 포인터에 오도록 회전시킨다. */
+    function runWheelRound(remainingPool, targetName, onLanded) {
+      const wrapper = document.getElementById('wheel-wrapper');
+
+      // 기존 SVG 제거 후 새로 그린다 (포인터는 그대로 유지).
+      const oldSvg = document.getElementById('wheel-svg');
+      if (oldSvg) oldSvg.remove();
+      wrapper.insertAdjacentHTML('beforeend', buildWheelSvgMarkup(remainingPool));
+
+      const svgEl = document.getElementById('wheel-svg');
+      const anglePerSector = 360 / remainingPool.length;
+      const targetMidAngle = anglePerSector / 2; // targetName은 항상 remainingPool[0]
+      const rotation = WHEEL_FULL_SPINS * 360 + (360 - targetMidAngle);
+
+      svgEl.style.transition = 'none';
+      svgEl.style.transform = 'rotate(0deg)';
+      void svgEl.getBoundingClientRect(); // 강제 리플로우로 transition 없는 초기 상태를 확정
+
+      requestAnimationFrame(() => {
+        svgEl.style.transition = `transform ${WHEEL_SPIN_DURATION_MS}ms cubic-bezier(0.2, 0.65, 0.3, 1)`;
+        svgEl.style.transform = `rotate(${rotation}deg)`;
+      });
+
+      setTimeout(() => {
+        playBeep();
+        onLanded();
+      }, WHEEL_SPIN_DURATION_MS);
+    }
+
+    // ── C. 세로 슬롯머신 ────────────────────────────────────────
+    const VERTICAL_SPIN_DURATION_MS = 700;
+    const VERTICAL_ITEM_HEIGHT = 80;
+    const VERTICAL_FILLER_COUNT = 18;
+
+    function createVerticalSlotItem(name) {
+      const div = document.createElement('div');
+      div.className = 'vertical-slot-item';
+      div.textContent = name;
+      return div;
+    }
+
+    /** remainingPool 중 무작위 이름들로 채운 세로 띠를 만들고, 맨 아래 targetName에서 멈추도록 스크롤한다. */
+    function runVerticalRound(remainingPool, targetName, onLanded) {
+      const strip = document.getElementById('vertical-slot-strip');
+      strip.style.transition = 'none';
+      strip.style.transform = 'translateY(0px)';
+      strip.innerHTML = '';
+
+      for (let i = 0; i < VERTICAL_FILLER_COUNT; i++) {
+        const randomName = remainingPool[Math.floor(Math.random() * remainingPool.length)];
+        strip.appendChild(createVerticalSlotItem(randomName));
+      }
+      strip.appendChild(createVerticalSlotItem(targetName));
+
+      void strip.getBoundingClientRect(); // 강제 리플로우
+
+      const targetOffset = VERTICAL_FILLER_COUNT * VERTICAL_ITEM_HEIGHT;
+
+      requestAnimationFrame(() => {
+        strip.style.transition = `transform ${VERTICAL_SPIN_DURATION_MS}ms cubic-bezier(0.15, 0.7, 0.3, 1)`;
+        strip.style.transform = `translateY(-${targetOffset}px)`;
+      });
+
+      setTimeout(() => {
+        playBeep();
+        onLanded();
+      }, VERTICAL_SPIN_DURATION_MS);
+    }
+
+    /**
+     * order 배열에서 index번째 순위를, 선택된 연출 방식(revealStyle)에 맞춰
+     * 룰렛처럼 빠르게 돌리다가 확정 공개하고, 재귀적으로 다음 순위(index + 1)를 이어서 진행한다.
+     * 모든 순위 공개가 끝나면 컨페티를 실행하고 "다시 뽑기" 버튼을 보여준다.
+     */
+    function revealNextRank(order, index) {
+      const total = order.length;
+
+      if (index >= total) {
+        document.getElementById('reveal-progress').innerHTML =
+          `<span>${total}</span> / ${total}명 발표 순서 확정!`;
+        setTimeout(launchConfetti, 300);
+        document.getElementById('reset-btn').style.display = 'inline-block';
+        return;
+      }
+
+      document.getElementById('reveal-progress').innerHTML =
+        `<span>${index + 1}</span> / ${total}번째 순서 뽑는 중...`;
+
+      const remainingPool = order.slice(index); // 아직 확정되지 않은 이름들 중에서만 룰렛을 돌린다.
+      const targetName = order[index]; // remainingPool[0]과 동일
+
+      const onLanded = () => {
+        appendResultItem(index, targetName);
+        setTimeout(() => revealNextRank(order, index + 1), PAUSE_AFTER_LAND_MS);
+      };
+
+      if (revealStyle === 'wheel') {
+        runWheelRound(remainingPool, targetName, onLanded);
+      } else if (revealStyle === 'vertical') {
+        runVerticalRound(remainingPool, targetName, onLanded);
+      } else {
+        runTextRound(remainingPool, targetName, onLanded);
+      }
+    }
+
+    /**
+     * "순서 뽑기 시작" 버튼 클릭 핸들러.
+     * 이름 목록을 셔플해 전체 순서(finalOrder)를 만들고,
+     * 룰렛 공개 화면으로 전환해 1등부터 마지막 등수까지
+     * 한 명씩 빠르게 룰렛을 돌려 순차 확정 공개한다.
+     */
+    function handleStartClick() {
+      // 오디오 컨텍스트는 반드시 클릭 이벤트 안에서 생성/재개해야
+      // 브라우저 자동재생 정책에 막히지 않는다.
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      const names = getNameList();
+      finalOrder = shuffleArray(names);
+
+      console.log('전체 순서:', finalOrder);
+
+      document.getElementById('result-list').innerHTML = '';
+      document.getElementById('reset-btn').style.display = 'none';
+      updateRevealContainerVisibility();
+      showScreen('screen-reveal');
+      revealNextRank(finalOrder, 0);
+    }
+
+    /** "다시 뽑기" 버튼 클릭 핸들러. 입력값을 초기화하고 입력 화면으로 돌아간다. */
+    function handleResetClick() {
+      document.getElementById('name-input').value = '';
+      updateParticipantCount();
+      showScreen('screen-input');
+    }
+
+    // 최초 로딩 시 인원 수 표시(0명)와 버튼 비활성화 상태를 초기화한다.
+    updateParticipantCount();
+  </script>
+
+</body>
+</html>
